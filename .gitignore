@@ -33,8 +33,6 @@ instance/
 app/static/uploads/*
 !app/static/uploads/.gitkeep
 
-# Migrations (keep the folder, not generated files)
-migrations/versions/
 
 # IDE
 .vscode/
