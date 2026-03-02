@@ -21,7 +21,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/sidebar.css') }}">
   {% block extra_head %}{% endblock %}
 </head>
-<body class="tm-app{% if current_user.is_authenticated %} authenticated{% endif %}">
+<body class="{% if current_user.is_authenticated %}tm-app{% endif %}">
 
 {% if current_user.is_authenticated %}
 
