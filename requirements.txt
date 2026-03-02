@@ -17,3 +17,4 @@ bcrypt==5.0.0
 eventlet==0.40.4
 pillow
 gunicorn
+psycopg2-binary

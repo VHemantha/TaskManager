@@ -47,7 +47,10 @@ class TestingConfig(BaseConfig):
 
 class ProductionConfig(BaseConfig):
     DEBUG = False
-    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL')
+    # Render (and Heroku) provide DATABASE_URL starting with "postgres://"
+    # SQLAlchemy 1.4+ requires "postgresql://" — fix the prefix here.
+    _db_url = os.environ.get('DATABASE_URL', '')
+    SQLALCHEMY_DATABASE_URI = _db_url.replace('postgres://', 'postgresql://', 1) if _db_url else None
     SESSION_COOKIE_SECURE = True
     SESSION_COOKIE_SAMESITE = 'Lax'
 

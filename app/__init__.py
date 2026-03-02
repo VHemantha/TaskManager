@@ -16,7 +16,8 @@ def create_app(config_name='development'):
     socketio.init_app(
         app,
         cors_allowed_origins='*',
-        async_mode='threading',
+        # 'threading' for local Windows dev; set SOCKETIO_ASYNC_MODE=eventlet on Render/Linux
+        async_mode=os.environ.get('SOCKETIO_ASYNC_MODE', 'threading'),
         logger=False,
         engineio_logger=False,
     )
