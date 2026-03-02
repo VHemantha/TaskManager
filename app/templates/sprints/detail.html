@@ -1,0 +1,205 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container-fluid px-4 py-4">
+
+  <div class="mb-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
+    <a href="{{ url_for('sprints.index') }}" class="text-muted text-decoration-none small">
+      <i class="bi bi-arrow-left me-1"></i>Sprints
+    </a>
+    {% if current_user.role in ('admin','team_leader') %}
+    <div class="d-flex gap-2">
+      <a href="{{ url_for('sprints.edit_sprint', sprint_id=sprint.id) }}"
+         class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-pencil me-1"></i>Edit
+      </a>
+      {% if sprint.status == 'planning' %}
+      <form method="POST" action="{{ url_for('sprints.activate', sprint_id=sprint.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn btn-sm btn-success"><i class="bi bi-play-fill me-1"></i>Activate</button>
+      </form>
+      {% elif sprint.status == 'active' %}
+      <form method="POST" action="{{ url_for('sprints.complete_sprint', sprint_id=sprint.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn btn-sm btn-secondary"><i class="bi bi-check-lg me-1"></i>Complete</button>
+      </form>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Sprint header -->
+  <div class="card border-0 mb-4"
+       style="background:linear-gradient(135deg,#1a1740,#2d2660);color:#fff;border-radius:16px;">
+    <div class="card-body p-4">
+      <div class="d-flex align-items-start justify-content-between">
+        <div>
+          <span class="badge bg-{{ sprint.status_color }} mb-2" style="font-size:0.72rem;">
+            {{ sprint.status_label }}
+          </span>
+          <h4 class="fw-bold text-white mb-1">{{ sprint.name }}</h4>
+          {% if sprint.goal %}
+          <p class="text-white mb-0" style="opacity:0.75;font-size:0.9rem;">{{ sprint.goal }}</p>
+          {% endif %}
+        </div>
+        <div class="text-end flex-shrink-0 ms-3">
+          <div style="font-size:2rem;font-weight:800;color:#a5b4fc;">{{ sprint.progress_pct }}%</div>
+          <div style="color:rgba(255,255,255,0.6);font-size:0.78rem;">{{ sprint.completed_count }}/{{ sprint.task_count }} done</div>
+        </div>
+      </div>
+      <!-- Progress bar -->
+      <div class="progress mt-3" style="height:8px;border-radius:4px;background:rgba(255,255,255,0.15);">
+        <div class="progress-bar" style="width:{{ sprint.progress_pct }}%;background:#818cf8;border-radius:4px;"></div>
+      </div>
+      <!-- Meta -->
+      <div class="d-flex gap-4 mt-3" style="color:rgba(255,255,255,0.6);font-size:0.78rem;">
+        {% if sprint.team %}<span><i class="bi bi-diagram-3 me-1"></i>{{ sprint.team.name }}</span>{% endif %}
+        {% if sprint.start_date %}<span><i class="bi bi-calendar3 me-1"></i>{{ sprint.start_date|datefmt('%d %b') }} – {{ sprint.end_date|datefmt('%d %b %Y') if sprint.end_date else '?' }}</span>{% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Add task (admin/leader) -->
+  {% if current_user.role in ('admin','team_leader') %}
+  <div class="card border-0 mb-4">
+    <div class="card-body">
+      <div class="d-flex gap-2 align-items-end flex-wrap">
+        <div class="flex-grow-1">
+          <label class="form-label fw-medium small mb-1">Add task to sprint</label>
+          <input type="text" id="sprintTaskSearch" class="form-control form-control-sm"
+                 placeholder="Search by task number or title…" autocomplete="off">
+          <div id="sprintSearchResults" class="mt-1" style="max-height:160px;overflow-y:auto;"></div>
+        </div>
+        <div style="width:100px;">
+          <label class="form-label fw-medium small mb-1">Story pts</label>
+          <input type="number" id="storyPoints" class="form-control form-control-sm" value="1" min="1" max="100">
+        </div>
+        <button class="btn btn-sm btn-primary flex-shrink-0 mb-0" id="btnAddSprintTask" disabled>
+          <i class="bi bi-plus-lg me-1"></i>Add
+        </button>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Tasks by status (board columns) -->
+  {% if tasks_by_status %}
+  <div class="row g-3">
+    {% for status, tasks in tasks_by_status.items() %}
+    {% if tasks %}
+    <div class="col-md-6 col-xl-4">
+      <div class="card border-0">
+        <div class="card-header d-flex align-items-center gap-2">
+          <span class="badge bg-{{ tasks[0].status_color if tasks else 'secondary' }}" style="font-size:0.65rem;">●</span>
+          <span class="fw-semibold small">{{ STATUS_LABELS.get(status, status) }}</span>
+          <span class="badge ms-auto" style="background:rgba(99,102,241,0.1);color:var(--tm-primary);font-size:0.65rem;">
+            {{ tasks|length }}
+          </span>
+        </div>
+        <div class="card-body p-0">
+          {% for task in tasks %}
+          <a href="{{ url_for('tasks.task_detail', task_id=task.id) }}"
+             class="d-flex align-items-start gap-2 px-3 py-2 border-bottom text-decoration-none"
+             style="border-left:3px solid var(--bs-{{ task.priority_color }});">
+            <div class="flex-grow-1 min-w-0">
+              <div class="small fw-medium text-truncate">{{ task.title }}</div>
+              <div class="x-small text-muted d-flex align-items-center gap-2 mt-1">
+                <span class="fw-mono">{{ task.task_no }}</span>
+                {% if task.primary_assignee %}
+                <span class="avatar-initials avatar-xs bg-primary text-white"
+                      style="width:16px;height:16px;font-size:0.55rem;">
+                  {{ task.primary_assignee.get_initials() }}
+                </span>
+                {% endif %}
+              </div>
+            </div>
+            {% if current_user.role in ('admin','team_leader') %}
+            <form method="POST" action="{{ url_for('sprints.remove_task', sprint_id=sprint.id, task_id=task.id) }}"
+                  class="flex-shrink-0" onclick="event.stopPropagation()">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button class="btn btn-xs text-muted border-0 p-0" title="Remove from sprint">
+                <i class="bi bi-x"></i>
+              </button>
+            </form>
+            {% endif %}
+          </a>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+    {% endif %}
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="text-center py-5 text-muted">
+    <i class="bi bi-kanban d-block mb-2" style="font-size:2rem;opacity:0.25;"></i>
+    <p class="small">No tasks in this sprint yet. Add tasks using the search above.</p>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% if current_user.role in ('admin','team_leader') %}
+<script>
+(function(){
+  const SPRINT_ID = {{ sprint.id }};
+  const searchInput = document.getElementById('sprintTaskSearch');
+  const resultsBox  = document.getElementById('sprintSearchResults');
+  const addBtn      = document.getElementById('btnAddSprintTask');
+  const storyPts    = document.getElementById('storyPoints');
+  let selectedTaskId = null;
+  let debounce = null;
+
+  if (!searchInput) return;
+
+  searchInput.addEventListener('input', () => {
+    clearTimeout(debounce);
+    selectedTaskId = null;
+    if (addBtn) addBtn.disabled = true;
+    debounce = setTimeout(() => {
+      const q = searchInput.value.trim();
+      if (q.length < 2) { resultsBox.innerHTML = ''; return; }
+      fetch(`/api/tasks/search?q=${encodeURIComponent(q)}`)
+        .then(r => r.json())
+        .then(items => {
+          resultsBox.innerHTML = items.map(t => `
+            <div class="d-flex align-items-center gap-2 px-2 py-1 rounded task-result-item"
+                 style="cursor:pointer;" data-id="${t.id}" data-no="${t.task_no}">
+              <span class="fw-mono x-small text-muted">${t.task_no}</span>
+              <span class="small flex-grow-1">${t.title}</span>
+            </div>
+          `).join('') || '<div class="small text-muted px-2 py-1">No tasks found</div>';
+        });
+    }, 240);
+  });
+
+  resultsBox.addEventListener('click', e => {
+    const item = e.target.closest('.task-result-item');
+    if (!item) return;
+    selectedTaskId = parseInt(item.dataset.id);
+    searchInput.value = item.dataset.no;
+    resultsBox.innerHTML = '';
+    if (addBtn) addBtn.disabled = false;
+  });
+
+  if (addBtn) {
+    addBtn.addEventListener('click', () => {
+      if (!selectedTaskId) return;
+      const csrf = document.querySelector('meta[name="csrf-token"]').content;
+      fetch(`/sprints/${SPRINT_ID}/add-task`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf },
+        body: JSON.stringify({ task_id: selectedTaskId, story_points: parseInt(storyPts.value) || 1 }),
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) location.reload();
+        else alert(data.error || 'Error adding task');
+      });
+    });
+  }
+})();
+</script>
+{% endif %}
+{% endblock %}

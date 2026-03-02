@@ -1,0 +1,108 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container-fluid py-4">
+  <div class="row justify-content-center">
+    <div class="col-lg-8">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="fw-bold mb-0"><i class="bi bi-arrow-repeat me-2"></i>{{ title }}</h4>
+        <a href="{{ url_for('recurring.index') }}" class="btn btn-sm btn-outline-secondary">
+          <i class="bi bi-arrow-left me-1"></i>Back
+        </a>
+      </div>
+
+      <div class="card border-0 shadow-sm">
+        <div class="card-body">
+          <form method="POST">
+            {{ form.hidden_tag() }}
+
+            <!-- Task Details -->
+            <h6 class="fw-semibold text-muted mb-3 border-bottom pb-2">Task Details</h6>
+            <div class="row g-3 mb-3">
+              <div class="col-12">
+                <label class="form-label small fw-medium">{{ form.title.label.text }}</label>
+                {{ form.title(class='form-control') }}
+              </div>
+              <div class="col-12">
+                <label class="form-label small fw-medium">{{ form.description.label.text }}</label>
+                {{ form.description(class='form-control', rows=3) }}
+              </div>
+              <div class="col-md-6">
+                <label class="form-label small fw-medium">{{ form.category_id.label.text }}</label>
+                {{ form.category_id(class='form-select') }}
+              </div>
+              <div class="col-md-6">
+                <label class="form-label small fw-medium">{{ form.client_id.label.text }}</label>
+                {{ form.client_id(class='form-select') }}
+              </div>
+              <div class="col-md-6">
+                <label class="form-label small fw-medium">{{ form.priority.label.text }}</label>
+                {{ form.priority(class='form-select') }}
+              </div>
+              <div class="col-md-6">
+                <label class="form-label small fw-medium">{{ form.estimated_hours.label.text }}</label>
+                {{ form.estimated_hours(class='form-control', placeholder='e.g. 2.5') }}
+              </div>
+              <div class="col-12">
+                <label class="form-label small fw-medium">{{ form.assignees.label.text }}</label>
+                {{ form.assignees(class='form-select', size=5) }}
+                <div class="form-text">Hold Ctrl / Cmd to select multiple.</div>
+              </div>
+            </div>
+
+            <!-- Schedule -->
+            <h6 class="fw-semibold text-muted mb-3 border-bottom pb-2 mt-4">Schedule</h6>
+            <div class="row g-3 mb-3">
+              <div class="col-md-6">
+                <label class="form-label small fw-medium">{{ form.frequency.label.text }}</label>
+                {{ form.frequency(class='form-select') }}
+              </div>
+              <div class="col-md-6">
+                <label class="form-label small fw-medium">{{ form.first_due_date.label.text }}</label>
+                {{ form.first_due_date(class='form-control') }}
+                <div class="form-text">{{ form.first_due_date.description }}</div>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label small fw-medium">{{ form.lead_days.label.text }}</label>
+                {{ form.lead_days(class='form-control') }}
+                <div class="form-text">{{ form.lead_days.description }}</div>
+              </div>
+              <div class="col-md-6 d-flex align-items-end">
+                <div class="form-check">
+                  {{ form.is_active(class='form-check-input', id='isActive') }}
+                  <label class="form-check-label" for="isActive">{{ form.is_active.label.text }}</label>
+                </div>
+              </div>
+            </div>
+
+            <!-- Errors -->
+            {% for field in form %}
+            {% if field.errors %}
+            <div class="alert alert-danger py-2 small">
+              {% for e in field.errors %}<div><strong>{{ field.label.text }}:</strong> {{ e }}</div>{% endfor %}
+            </div>
+            {% endif %}
+            {% endfor %}
+
+            <div class="d-flex gap-2 justify-content-end border-top pt-3 mt-2">
+              <a href="{{ url_for('recurring.index') }}" class="btn btn-outline-secondary">Cancel</a>
+              {{ form.submit(class='btn btn-primary') }}
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <div class="card border-0 shadow-sm mt-3">
+        <div class="card-body py-3">
+          <h6 class="fw-semibold mb-2"><i class="bi bi-info-circle me-1"></i>How Recurring Tasks Work</h6>
+          <ul class="small text-muted mb-0">
+            <li>Set a <strong>First Due Date</strong> and <strong>Frequency</strong>. The generator creates a task <em>Lead Days</em> before that date.</li>
+            <li>After each task is created, the next due date advances by the frequency interval automatically.</li>
+            <li>Click <strong>Run Generator</strong> on the list page to trigger generation, or set up a cron job calling <code>flask generate-recurring</code>.</li>
+            <li>Pause a definition at any time without losing the schedule.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

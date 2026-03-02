@@ -1,0 +1,110 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container-fluid py-4">
+
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm text-center">
+        <div class="card-body py-3">
+          <div class="fs-2 fw-bold text-primary">{{ my_tasks | length }}</div>
+          <div class="small text-muted">Active Tasks</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm text-center">
+        <div class="card-body py-3">
+          <div class="fs-2 fw-bold text-success">{{ completed_today }}</div>
+          <div class="small text-muted">Completed Today</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm text-center">
+        <div class="card-body py-3">
+          <div class="fs-2 fw-bold text-warning">{{ upcoming | length }}</div>
+          <div class="small text-muted">Due in 48h</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm text-center">
+        <div class="card-body py-3">
+          <div class="fs-2 fw-bold text-danger">{{ my_tasks | selectattr('is_overdue') | list | length }}</div>
+          <div class="small text-muted">Overdue</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <!-- My Tasks -->
+    <div class="col-lg-8">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-transparent fw-semibold border-bottom d-flex justify-content-between">
+          <span><i class="bi bi-person-check me-2"></i>My Tasks</span>
+          <a href="{{ url_for('tasks.list_tasks') }}" class="btn btn-sm btn-outline-primary">View All</a>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover mb-0 align-middle">
+              <thead class="table-light">
+                <tr><th>Task</th><th>Priority</th><th>Due</th><th>Status</th><th></th></tr>
+              </thead>
+              <tbody>
+                {% for task in my_tasks %}
+                <tr class="{% if task.is_overdue %}table-danger{% endif %}">
+                  <td>
+                    <a href="{{ url_for('tasks.task_detail', task_id=task.id) }}" class="fw-medium text-decoration-none">
+                      {{ task.task_no }}
+                    </a>
+                    <div class="text-muted small">{{ task.title | truncate_text(55) }}</div>
+                    {% if task.client %}<span class="badge bg-light text-dark border small">{{ task.client.name }}</span>{% endif %}
+                  </td>
+                  <td><span class="badge bg-{{ task.priority_color }}">{{ task.priority_label }}</span></td>
+                  <td class="small {% if task.is_overdue %}text-danger fw-bold{% endif %}">
+                    {{ task.due_date | datefmt('%d %b %Y') if task.due_date else '—' }}
+                  </td>
+                  <td><span class="badge bg-{{ task.status_color }}">{{ task.status_label }}</span></td>
+                  <td>
+                    <a href="{{ url_for('tasks.task_detail', task_id=task.id) }}" class="btn btn-sm btn-outline-secondary">
+                      <i class="bi bi-arrow-right"></i>
+                    </a>
+                  </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="5" class="text-center text-muted py-4">You have no active tasks.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Notifications -->
+    <div class="col-lg-4">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-transparent fw-semibold border-bottom d-flex justify-content-between">
+          <span><i class="bi bi-bell me-2"></i>Notifications</span>
+          <a href="{{ url_for('notifications.index') }}" class="btn btn-sm btn-outline-secondary">All</a>
+        </div>
+        <div class="card-body p-0">
+          <div class="list-group list-group-flush">
+            {% for notif in recent_notifications %}
+            <div class="list-group-item px-3 py-2 {% if not notif.is_read %}list-group-item-primary{% endif %}">
+              <div class="fw-medium small">{{ notif.title }}</div>
+              <div class="text-muted small">{{ notif.message | truncate_text(60) if notif.message }}</div>
+              <div class="text-muted x-small">{{ notif.created_at | datefmt('%d %b, %H:%M') }}</div>
+            </div>
+            {% else %}
+            <div class="p-3 text-center text-muted small">No new notifications.</div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

@@ -1,0 +1,123 @@
+{% extends 'base.html' %}
+{% block extra_head %}
+<style>
+.kanban-col { min-width: 220px; max-width: 270px; }
+.kanban-card { cursor: pointer; transition: transform 0.15s; }
+.kanban-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.12); }
+.kanban-body { min-height: 120px; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="container-fluid py-3">
+  {% set active_view = 'board' %}
+  {% include 'tasks/_view_switcher.html' %}
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="fw-bold mb-0"><i class="bi bi-kanban me-2"></i>Kanban Board</h4>
+    <div class="d-flex gap-2">
+      <a href="{{ url_for('chat.assign') }}" class="btn btn-sm btn-outline-primary">
+        <i class="bi bi-chat-dots me-1"></i>Assign Task
+      </a>
+      <a href="{{ url_for('tasks.task_new') }}" class="btn btn-sm btn-primary">
+        <i class="bi bi-plus-lg me-1"></i>New Task
+      </a>
+    </div>
+  </div>
+
+  <div class="d-flex gap-3 overflow-auto pb-3" id="kanbanBoard">
+    {% for status in kanban_columns %}
+    {% set col_tasks = tasks_by_status.get(status, []) %}
+    <div class="kanban-col flex-shrink-0">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-header bg-transparent border-bottom py-2">
+          <div class="d-flex justify-content-between align-items-center">
+            <span class="fw-semibold small">{{ STATUS_LABELS.get(status, status) }}</span>
+            <span class="badge bg-secondary rounded-pill">{{ col_tasks | length }}</span>
+          </div>
+        </div>
+        <div class="card-body p-2 kanban-body" id="col-{{ status }}" data-status="{{ status }}">
+          {% for task in col_tasks %}
+          <div class="card kanban-card border-0 shadow-sm mb-2 border-start border-3 border-{{ task.priority_color }}"
+               data-task-id="{{ task.id }}"
+               onclick="window.location='{{ url_for('tasks.task_detail', task_id=task.id) }}'">
+            <div class="card-body p-2">
+              <div class="d-flex justify-content-between align-items-start mb-1">
+                <span class="small text-muted fw-mono">{{ task.task_no }}</span>
+                <span class="badge bg-{{ task.priority_color }} ms-1" style="font-size:0.65rem;">{{ task.priority_label }}</span>
+              </div>
+              <div class="small fw-medium mb-2">{{ task.title | truncate_text(55) }}</div>
+              <div class="d-flex justify-content-between align-items-center">
+                <div>
+                  {% for u in task.assignees[:2] %}
+                  <span class="avatar-initials avatar-xs bg-secondary text-white" title="{{ u.name }}">{{ u.get_initials() }}</span>
+                  {% endfor %}
+                </div>
+                <div class="small text-muted {% if task.is_overdue %}text-danger{% endif %}">
+                  {% if task.due_date %}
+                  <i class="bi bi-calendar me-1"></i>{{ task.due_date | datefmt('%d %b') }}
+                  {% endif %}
+                </div>
+              </div>
+              {% if task.client %}
+              <div class="small text-muted mt-1"><i class="bi bi-building me-1"></i>{{ task.client.name | truncate_text(25) }}</div>
+              {% endif %}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Enable drag-and-drop across kanban columns
+document.querySelectorAll('.kanban-body').forEach(col => {
+  new Sortable(col, {
+    group: 'kanban',
+    animation: 150,
+    ghostClass: 'opacity-50',
+    onEnd(evt) {
+      const taskId = evt.item.dataset.taskId;
+      const newStatus = evt.to.dataset.status;
+      const oldStatus = evt.from.dataset.status;
+      if (newStatus === oldStatus) return;
+
+      fetch('{{ url_for("tasks.kanban_move") }}', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
+        body: JSON.stringify({ task_id: parseInt(taskId), new_status: newStatus })
+      }).then(r => r.json()).then(data => {
+        if (data.error) {
+          alert(data.error);
+          // Revert: move card back
+          evt.from.insertBefore(evt.item, evt.from.children[evt.oldIndex] || null);
+        } else {
+          // Update badge counts
+          updateColCount(oldStatus, -1);
+          updateColCount(newStatus, 1);
+        }
+      }).catch(() => {
+        evt.from.insertBefore(evt.item, evt.from.children[evt.oldIndex] || null);
+      });
+    }
+  });
+});
+
+function updateColCount(status, delta) {
+  const col = document.getElementById('col-' + status);
+  if (!col) return;
+  const badge = col.closest('.card').querySelector('.badge.rounded-pill');
+  if (badge) badge.textContent = Math.max(0, parseInt(badge.textContent) + delta);
+}
+
+function getCsrfToken() {
+  const meta = document.querySelector('meta[name="csrf-token"]');
+  if (meta) return meta.content;
+  const input = document.querySelector('input[name="csrf_token"]');
+  return input ? input.value : '';
+}
+</script>
+{% endblock %}

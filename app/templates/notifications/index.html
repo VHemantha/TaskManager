@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container py-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="fw-bold mb-0"><i class="bi bi-bell me-2"></i>Notifications</h4>
+    <button class="btn btn-sm btn-outline-secondary" id="markAllRead">
+      <i class="bi bi-check2-all me-1"></i>Mark All Read
+    </button>
+  </div>
+
+  <div class="card border-0 shadow-sm">
+    <div class="list-group list-group-flush">
+      {% for notif in notifications.items %}
+      <div class="list-group-item {% if not notif.is_read %}list-group-item-primary bg-primary-subtle{% endif %} px-4 py-3"
+           id="notif-{{ notif.id }}">
+        <div class="d-flex justify-content-between align-items-start">
+          <div class="flex-grow-1">
+            <div class="fw-semibold">{{ notif.title }}</div>
+            {% if notif.message %}
+            <div class="small text-secondary mt-1">{{ notif.message }}</div>
+            {% endif %}
+            <div class="small text-muted mt-1">{{ notif.created_at | datefmt('%d %b %Y, %H:%M') }}</div>
+          </div>
+          <div class="d-flex gap-2 ms-3">
+            {% if notif.task_id %}
+            <a href="{{ url_for('tasks.task_detail', task_id=notif.task_id) }}"
+               class="btn btn-xs btn-outline-primary">View Task</a>
+            {% endif %}
+            {% if not notif.is_read %}
+            <button class="btn btn-xs btn-outline-secondary mark-read-btn" data-id="{{ notif.id }}">
+              Mark Read
+            </button>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      {% else %}
+      <div class="list-group-item text-center text-muted py-5">
+        <i class="bi bi-bell-slash fs-2 d-block mb-2"></i>No notifications yet.
+      </div>
+      {% endfor %}
+    </div>
+
+    {% if notifications.pages > 1 %}
+    <div class="card-footer bg-transparent">
+      <nav>
+        <ul class="pagination pagination-sm mb-0 justify-content-center">
+          {% if notifications.has_prev %}
+          <li class="page-item"><a class="page-link" href="?page={{ notifications.prev_num }}">Previous</a></li>
+          {% endif %}
+          <li class="page-item disabled"><span class="page-link">{{ notifications.page }} / {{ notifications.pages }}</span></li>
+          {% if notifications.has_next %}
+          <li class="page-item"><a class="page-link" href="?page={{ notifications.next_num }}">Next</a></li>
+          {% endif %}
+        </ul>
+      </nav>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.querySelectorAll('.mark-read-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const id = btn.dataset.id;
+    fetch(`/notifications/mark-read/${id}`, { method: 'POST', headers: {'X-CSRFToken': getCsrfToken()} })
+      .then(() => {
+        document.getElementById('notif-' + id).classList.remove('list-group-item-primary', 'bg-primary-subtle');
+        btn.remove();
+      });
+  });
+});
+
+document.getElementById('markAllRead').addEventListener('click', () => {
+  fetch('/notifications/mark-all-read', { method: 'POST', headers: {'X-CSRFToken': getCsrfToken()} })
+    .then(() => location.reload());
+});
+
+function getCsrfToken() {
+  const input = document.querySelector('input[name="csrf_token"]');
+  return input ? input.value : '';
+}
+</script>
+{% endblock %}

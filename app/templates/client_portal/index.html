@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container-fluid py-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="fw-bold mb-0"><i class="bi bi-building me-2"></i>Client Portal</h4>
+  </div>
+
+  {% if stats %}
+  <div class="row g-3">
+    {% for s in stats %}
+    <div class="col-md-6 col-xl-4">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-start mb-2">
+            <div>
+              <h6 class="fw-bold mb-0">{{ s.client.name }}</h6>
+              <span class="badge bg-secondary small">{{ s.client.code }}</span>
+            </div>
+            <a href="{{ url_for('portal.client_tasks', client_id=s.client.id) }}"
+               class="btn btn-sm btn-outline-primary">View Tasks</a>
+          </div>
+          {% if s.client.contact_person %}
+          <div class="small text-muted mb-2">
+            <i class="bi bi-person me-1"></i>{{ s.client.contact_person }}
+          </div>
+          {% endif %}
+          <div class="row g-2 text-center mt-2">
+            <div class="col-3">
+              <div class="fw-bold">{{ s.total }}</div>
+              <div class="x-small text-muted">Total</div>
+            </div>
+            <div class="col-3">
+              <div class="fw-bold text-info">{{ s.active }}</div>
+              <div class="x-small text-muted">Active</div>
+            </div>
+            <div class="col-3">
+              <div class="fw-bold text-success">{{ s.completed }}</div>
+              <div class="x-small text-muted">Done</div>
+            </div>
+            <div class="col-3">
+              <div class="fw-bold {% if s.overdue > 0 %}text-danger{% else %}text-secondary{% endif %}">{{ s.overdue }}</div>
+              <div class="x-small text-muted">Overdue</div>
+            </div>
+          </div>
+          {% if s.total > 0 %}
+          <div class="progress mt-3" style="height:6px" title="{{ s.completed }} / {{ s.total }} completed">
+            <div class="progress-bar bg-success" style="width:{{ (s.completed / s.total * 100) | int }}%"></div>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="text-center py-5 text-muted">
+    <i class="bi bi-building fs-1 d-block mb-3"></i>
+    <h5>No active clients</h5>
+    <p class="small">Add clients via <a href="{{ url_for('admin.clients') }}">Admin → Clients</a>.</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

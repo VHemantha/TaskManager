@@ -1,0 +1,91 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container-fluid py-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="fw-bold mb-0"><i class="bi bi-people me-2"></i>Team Productivity Report</h4>
+    <a href="{{ url_for('reports.index') }}" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-arrow-left me-1"></i>All Reports
+    </a>
+  </div>
+
+  <!-- Filter -->
+  <div class="card border-0 shadow-sm mb-3">
+    <div class="card-body py-2">
+      <form method="GET" class="row g-2 align-items-end">
+        <div class="col-md-2">
+          <label class="form-label small mb-1">From</label>
+          <input type="date" name="date_from" class="form-control form-control-sm"
+                 value="{{ date_from.strftime('%Y-%m-%d') if date_from else '' }}">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small mb-1">To</label>
+          <input type="date" name="date_to" class="form-control form-control-sm"
+                 value="{{ date_to.strftime('%Y-%m-%d') if date_to else '' }}">
+        </div>
+        <div class="col-md-auto d-flex gap-2">
+          <button type="submit" class="btn btn-success btn-sm">Apply</button>
+          <a href="{{ url_for('reports.team_report') }}" class="btn btn-outline-secondary btn-sm">Clear</a>
+          <a href="?{{ request.query_string.decode() }}&export=csv" class="btn btn-success btn-sm">
+            <i class="bi bi-download me-1"></i>CSV
+          </a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Team Stats Table -->
+  <div class="card border-0 shadow-sm">
+    <div class="card-header bg-transparent fw-semibold border-bottom small">
+      {{ stats | length }} member(s) — {{ date_from.strftime('%d %b %Y') if date_from else '' }} to {{ date_to.strftime('%d %b %Y') if date_to else '' }}
+    </div>
+    <div class="table-responsive">
+      <table class="table table-hover mb-0 align-middle">
+        <thead class="table-light">
+          <tr>
+            <th>Member</th>
+            <th class="text-center">Assigned</th>
+            <th class="text-center">Completed</th>
+            <th class="text-center">Overdue</th>
+            <th class="text-center">Hours Logged</th>
+            <th style="min-width:160px">Completion Rate</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in stats %}
+          <tr>
+            <td>
+              <div class="d-flex align-items-center gap-2">
+                <span class="avatar-initials avatar-sm bg-secondary text-white">{{ s.user.get_initials() }}</span>
+                <div>
+                  <div class="fw-medium small">{{ s.user.name }}</div>
+                  <div class="x-small text-muted">{{ s.user.team.name if s.user.team else 'No team' }}</div>
+                </div>
+              </div>
+            </td>
+            <td class="text-center fw-bold">{{ s.total }}</td>
+            <td class="text-center fw-bold text-success">{{ s.completed }}</td>
+            <td class="text-center fw-bold {% if s.overdue > 0 %}text-danger{% endif %}">{{ s.overdue }}</td>
+            <td class="text-center fw-bold text-warning">{{ s.hours }}h</td>
+            <td>
+              <div class="d-flex align-items-center gap-2">
+                <div class="progress flex-grow-1" style="height:8px">
+                  <div class="progress-bar bg-{{ 'success' if s.rate >= 80 else 'warning' if s.rate >= 50 else 'danger' }}"
+                       style="width:{{ s.rate }}%"></div>
+                </div>
+                <span class="small fw-bold" style="min-width:36px">{{ s.rate }}%</span>
+              </div>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="6" class="text-center text-muted py-5">
+              <i class="bi bi-people fs-2 d-block mb-2"></i>No team members found.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

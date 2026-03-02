@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+{% block extra_head %}
+<link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet">
+<style>
+  #calendarEl { min-height: 560px; }
+  .fc-event { cursor: pointer; border: none !important; border-radius: 5px !important; font-size: 0.75rem !important; }
+  .fc-toolbar-title { font-size: 1.1rem !important; font-weight: 700 !important; }
+  .fc-button { font-size: 0.8rem !important; border-radius: 8px !important; }
+  .fc-button-primary { background: #6366f1 !important; border-color: #6366f1 !important; }
+  .fc-button-primary:hover { background: #4f46e5 !important; border-color: #4f46e5 !important; }
+  [data-bs-theme="dark"] .fc { color: #e2e8f0; }
+  [data-bs-theme="dark"] .fc-theme-standard td,
+  [data-bs-theme="dark"] .fc-theme-standard th { border-color: #334155; }
+  [data-bs-theme="dark"] .fc-day-today { background: rgba(99,102,241,0.08) !important; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-4">
+
+  {% include 'tasks/_view_switcher.html' %}
+
+  <div class="card border-0">
+    <div class="card-body p-4">
+      <div id="calendarEl"></div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const tasks = {{ tasks_json | safe }};
+  const calEl = document.getElementById('calendarEl');
+  const calendar = new FullCalendar.Calendar(calEl, {
+    initialView: 'dayGridMonth',
+    headerToolbar: {
+      left: 'prev,next today',
+      center: 'title',
+      right: 'dayGridMonth,timeGridWeek,listWeek',
+    },
+    events: tasks,
+    eventClick: function(info) {
+      window.location.href = info.event.url;
+      info.jsEvent.preventDefault();
+    },
+    eventDidMount: function(info) {
+      if (info.event.extendedProps.status) {
+        info.el.title = `${info.event.extendedProps.status} — ${info.event.extendedProps.priority}`;
+      }
+    },
+    dayMaxEvents: 4,
+    height: 'auto',
+    firstDay: 1,  // Monday
+  });
+  calendar.render();
+});
+</script>
+{% endblock %}

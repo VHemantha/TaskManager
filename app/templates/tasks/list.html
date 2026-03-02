@@ -1,0 +1,196 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container-fluid px-4 py-4">
+
+  {% set active_view = 'list' %}
+  {% include 'tasks/_view_switcher.html' %}
+
+  <!-- Page Header -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h4 class="page-title mb-0">
+        <i class="bi bi-list-task me-2 text-primary"></i>Tasks
+      </h4>
+      <p class="page-subtitle mb-0">
+        {{ tasks.total }} task{{ 's' if tasks.total != 1 else '' }} total
+      </p>
+    </div>
+    {% if current_user.role in ('admin', 'team_leader') %}
+    <div class="d-flex gap-2">
+      <a href="{{ url_for('chat.assign') }}" class="btn btn-outline-primary btn-sm">
+        <i class="bi bi-chat-dots me-1"></i>Assign via Chat
+      </a>
+      <a href="{{ url_for('tasks.task_new') }}" class="btn btn-primary btn-sm">
+        <i class="bi bi-plus-lg me-1"></i>New Task
+      </a>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Filter Bar -->
+  <div class="card border-0 mb-3 filter-card">
+    <div class="card-body py-3 px-3">
+      <form method="GET" class="row g-2 align-items-end">
+        <div class="col-md-3">
+          <div class="input-group input-group-sm">
+            <span class="input-group-text border-end-0 bg-transparent">
+              <i class="bi bi-search text-muted" style="font-size:0.75rem;"></i>
+            </span>
+            {{ filter_form.search(class='form-control form-control-sm border-start-0 ps-0',
+               placeholder='Search tasks...') }}
+          </div>
+        </div>
+        <div class="col-md-2">
+          {{ filter_form.status(class='form-select form-select-sm') }}
+        </div>
+        <div class="col-md-2">
+          {{ filter_form.priority(class='form-select form-select-sm') }}
+        </div>
+        {% if current_user.role in ('admin', 'team_leader') %}
+        <div class="col-md-2">
+          {{ filter_form.assignee_id(class='form-select form-select-sm') }}
+        </div>
+        {% endif %}
+        <div class="col-md-2">
+          {{ filter_form.client_id(class='form-select form-select-sm') }}
+        </div>
+        <div class="col-auto d-flex gap-2">
+          <button type="submit" class="btn btn-sm btn-primary">
+            <i class="bi bi-funnel me-1"></i>Filter
+          </button>
+          <a href="{{ url_for('tasks.list_tasks') }}" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-x-lg"></i>
+          </a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Task Table -->
+  <div class="card border-0">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead>
+            <tr>
+              <th style="width:110px;">Task No.</th>
+              <th>Title</th>
+              <th>Client</th>
+              <th>Priority</th>
+              <th>Assignees</th>
+              <th>Due Date</th>
+              <th>Status</th>
+              <th style="width:50px;"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for task in tasks.items %}
+            <tr class="{% if task.is_overdue and task.status not in ('completed', 'cancelled') %}table-danger{% endif %}">
+              <td>
+                <span class="fw-mono text-muted" style="font-size:0.75rem;">{{ task.task_no }}</span>
+              </td>
+              <td>
+                <a href="{{ url_for('tasks.task_detail', task_id=task.id) }}"
+                   class="fw-medium text-decoration-none">
+                  {{ task.title | truncate_text(55) }}
+                </a>
+                {% if task.category %}
+                <span class="badge ms-1" style="background-color:{{ task.category.color_code }};font-size:0.65rem;">
+                  {{ task.category.name }}
+                </span>
+                {% endif %}
+              </td>
+              <td class="small text-muted">{{ task.client.name if task.client else '—' }}</td>
+              <td>
+                <span class="badge bg-{{ task.priority_color }}">{{ task.priority_label }}</span>
+              </td>
+              <td>
+                <div class="d-flex gap-1 flex-wrap">
+                  {% for u in task.assignees[:3] %}
+                  <span class="avatar-initials avatar-xs bg-primary text-white" title="{{ u.name }}">
+                    {{ u.get_initials() }}
+                  </span>
+                  {% endfor %}
+                  {% if task.assignees | length > 3 %}
+                  <span class="avatar-initials avatar-xs bg-secondary text-white">
+                    +{{ task.assignees | length - 3 }}
+                  </span>
+                  {% endif %}
+                  {% if task.assignees | length == 0 %}
+                  <span class="text-muted small">Unassigned</span>
+                  {% endif %}
+                </div>
+              </td>
+              <td class="small {% if task.is_overdue and task.status not in ('completed', 'cancelled') %}text-danger fw-bold{% else %}text-muted{% endif %}">
+                {{ task.due_date | datefmt('%d %b %Y') if task.due_date else '—' }}
+              </td>
+              <td>
+                <span class="badge bg-{{ task.status_color }}">{{ task.status_label }}</span>
+              </td>
+              <td>
+                <a href="{{ url_for('tasks.task_detail', task_id=task.id) }}"
+                   class="btn btn-xs btn-outline-secondary">
+                  <i class="bi bi-eye"></i>
+                </a>
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="8" class="text-center py-5">
+                <i class="bi bi-inbox fs-1 d-block mb-3 text-muted opacity-25"></i>
+                <p class="text-muted mb-2 fw-medium">No tasks found</p>
+                <p class="text-muted small mb-0">Try adjusting your filters or create a new task.</p>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Pagination -->
+    {% if tasks.pages > 1 %}
+    <div class="card-footer px-3 py-2">
+      <div class="d-flex justify-content-between align-items-center">
+        <span class="small text-muted">
+          Showing {{ ((tasks.page - 1) * tasks.per_page) + 1 }}–{{ [tasks.page * tasks.per_page, tasks.total] | min }}
+          of {{ tasks.total }}
+        </span>
+        <nav>
+          <ul class="pagination pagination-sm mb-0">
+            {% if tasks.has_prev %}
+            <li class="page-item">
+              <a class="page-link" href="?page={{ tasks.prev_num }}">
+                <i class="bi bi-chevron-left"></i>
+              </a>
+            </li>
+            {% endif %}
+            {% for p in range(1, tasks.pages + 1) %}
+            {% if p == tasks.page %}
+            <li class="page-item active">
+              <span class="page-link">{{ p }}</span>
+            </li>
+            {% elif p == 1 or p == tasks.pages or (p >= tasks.page - 1 and p <= tasks.page + 1) %}
+            <li class="page-item">
+              <a class="page-link" href="?page={{ p }}">{{ p }}</a>
+            </li>
+            {% elif p == tasks.page - 2 or p == tasks.page + 2 %}
+            <li class="page-item disabled"><span class="page-link">…</span></li>
+            {% endif %}
+            {% endfor %}
+            {% if tasks.has_next %}
+            <li class="page-item">
+              <a class="page-link" href="?page={{ tasks.next_num }}">
+                <i class="bi bi-chevron-right"></i>
+              </a>
+            </li>
+            {% endif %}
+          </ul>
+        </nav>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}

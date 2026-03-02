@@ -1,0 +1,31 @@
+<div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+  <div class="tm-view-switcher">
+    <a href="{{ url_for('tasks.list_tasks') }}"
+       class="tm-view-btn {% if active_view == 'list' %}active{% endif %}">
+      <i class="bi bi-list-ul"></i><span class="d-none d-sm-inline"> List</span>
+    </a>
+    <a href="{{ url_for('tasks.kanban') }}"
+       class="tm-view-btn {% if active_view == 'board' %}active{% endif %}">
+      <i class="bi bi-kanban"></i><span class="d-none d-sm-inline"> Board</span>
+    </a>
+    <a href="{{ url_for('tasks.calendar_view') }}"
+       class="tm-view-btn {% if active_view == 'calendar' %}active{% endif %}">
+      <i class="bi bi-calendar3"></i><span class="d-none d-sm-inline"> Calendar</span>
+    </a>
+    <a href="{{ url_for('tasks.table_view') }}"
+       class="tm-view-btn {% if active_view == 'table' %}active{% endif %}">
+      <i class="bi bi-table"></i><span class="d-none d-sm-inline"> Table</span>
+    </a>
+    {% if current_user.role in ('admin','team_leader') %}
+    <a href="{{ url_for('tasks.workload_view') }}"
+       class="tm-view-btn {% if active_view == 'workload' %}active{% endif %}">
+      <i class="bi bi-people"></i><span class="d-none d-md-inline"> Workload</span>
+    </a>
+    <a href="{{ url_for('tasks.matrix_view') }}"
+       class="tm-view-btn {% if active_view == 'matrix' %}active{% endif %}">
+      <i class="bi bi-grid-3x3-gap"></i><span class="d-none d-md-inline"> Matrix</span>
+    </a>
+    {% endif %}
+  </div>
+  <div>{% block view_actions %}{% endblock %}</div>
+</div>

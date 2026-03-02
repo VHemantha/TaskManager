@@ -1,0 +1,91 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container-fluid px-4 py-4">
+
+  <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+    <div>
+      <h4 class="fw-bold mb-0"><i class="bi bi-lightning-charge me-2 text-warning"></i>Sprints</h4>
+      <p class="text-muted small mb-0">Plan and track your work in focused time-boxes</p>
+    </div>
+    {% if current_user.role in ('admin','team_leader') %}
+    <a href="{{ url_for('sprints.new_sprint') }}" class="btn btn-primary btn-sm">
+      <i class="bi bi-plus-lg me-1"></i>New Sprint
+    </a>
+    {% endif %}
+  </div>
+
+  {% if sprints %}
+  <div class="card border-0">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead>
+            <tr>
+              <th class="ps-4">Sprint</th>
+              <th>Team</th>
+              <th>Status</th>
+              <th>Progress</th>
+              <th>Dates</th>
+              <th class="text-end pe-4">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for sprint in sprints %}
+            <tr>
+              <td class="ps-4">
+                <a href="{{ url_for('sprints.board', sprint_id=sprint.id) }}"
+                   class="fw-semibold text-decoration-none">{{ sprint.name }}</a>
+                {% if sprint.goal %}
+                <div class="x-small text-muted mt-1">{{ sprint.goal | truncate_text(60) }}</div>
+                {% endif %}
+              </td>
+              <td class="small text-muted">{{ sprint.team.name if sprint.team else '—' }}</td>
+              <td>
+                <span class="badge bg-{{ sprint.status_color }}" style="font-size:0.68rem;">
+                  {{ sprint.status_label }}
+                </span>
+              </td>
+              <td style="min-width:140px;">
+                <div class="d-flex align-items-center gap-2">
+                  <div class="progress flex-grow-1" style="height:6px;border-radius:3px;">
+                    <div class="progress-bar bg-primary" style="width:{{ sprint.progress_pct }}%;"></div>
+                  </div>
+                  <span class="x-small text-muted fw-medium">{{ sprint.progress_pct }}%</span>
+                </div>
+                <div class="x-small text-muted">{{ sprint.completed_count }}/{{ sprint.task_count }} tasks</div>
+              </td>
+              <td class="small text-muted">
+                {% if sprint.start_date %}{{ sprint.start_date | datefmt('%d %b') }}{% else %}—{% endif %}
+                →
+                {% if sprint.end_date %}{{ sprint.end_date | datefmt('%d %b %Y') }}{% else %}—{% endif %}
+              </td>
+              <td class="text-end pe-4">
+                <a href="{{ url_for('sprints.board', sprint_id=sprint.id) }}"
+                   class="btn btn-xs btn-outline-primary me-1">Board</a>
+                {% if current_user.role in ('admin','team_leader') %}
+                <a href="{{ url_for('sprints.edit_sprint', sprint_id=sprint.id) }}"
+                   class="btn btn-xs btn-outline-secondary">Edit</a>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  {% else %}
+  <div class="text-center py-5">
+    <i class="bi bi-lightning-charge display-4 text-muted d-block mb-3" style="opacity:0.25;"></i>
+    <h5 class="text-muted fw-medium">No sprints yet</h5>
+    <p class="text-muted small">Create your first sprint to organize work in time-boxes.</p>
+    {% if current_user.role in ('admin','team_leader') %}
+    <a href="{{ url_for('sprints.new_sprint') }}" class="btn btn-primary btn-sm mt-2">
+      <i class="bi bi-plus-lg me-1"></i>Create First Sprint
+    </a>
+    {% endif %}
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

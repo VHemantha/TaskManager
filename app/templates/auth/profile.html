@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container py-4">
+  <div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+
+      <div class="card shadow-sm mb-4">
+        <div class="card-header fw-bold"><i class="bi bi-person me-2"></i>My Profile</div>
+        <div class="card-body">
+          <div class="d-flex align-items-center mb-4">
+            <div class="avatar-initials avatar-lg bg-primary text-white me-3">{{ current_user.get_initials() }}</div>
+            <div>
+              <h4 class="mb-0">{{ current_user.name }}</h4>
+              <span class="badge bg-secondary">{{ current_user.get_role_label() }}</span>
+              {% if current_user.team %}<span class="ms-1 badge bg-info text-dark">{{ current_user.team.name }}</span>{% endif %}
+              <div class="text-muted small mt-1">{{ current_user.email }}</div>
+            </div>
+          </div>
+          <table class="table table-sm">
+            <tr><th>Email</th><td>{{ current_user.email }}</td></tr>
+            <tr><th>Phone</th><td>{{ current_user.phone or '—' }}</td></tr>
+            <tr><th>Role</th><td>{{ current_user.get_role_label() }}</td></tr>
+            <tr><th>Team</th><td>{{ current_user.team.name if current_user.team else '—' }}</td></tr>
+            <tr><th>Account Status</th><td><span class="badge bg-success">Active</span></td></tr>
+            <tr><th>Member Since</th><td>{{ current_user.created_at | datefmt('%d %b %Y') }}</td></tr>
+          </table>
+        </div>
+      </div>
+
+      <div class="card shadow-sm">
+        <div class="card-header fw-bold"><i class="bi bi-lock me-2"></i>Change Password</div>
+        <div class="card-body">
+          <form method="POST">
+            {{ form.hidden_tag() }}
+            <div class="mb-3">
+              {{ form.current_password.label(class='form-label') }}
+              {{ form.current_password(class='form-control' + (' is-invalid' if form.current_password.errors else '')) }}
+              {% for e in form.current_password.errors %}<div class="invalid-feedback">{{ e }}</div>{% endfor %}
+            </div>
+            <div class="mb-3">
+              {{ form.new_password.label(class='form-label') }}
+              {{ form.new_password(class='form-control' + (' is-invalid' if form.new_password.errors else '')) }}
+            </div>
+            <div class="mb-3">
+              {{ form.confirm_password.label(class='form-label') }}
+              {{ form.confirm_password(class='form-control' + (' is-invalid' if form.confirm_password.errors else '')) }}
+              {% for e in form.confirm_password.errors %}<div class="invalid-feedback">{{ e }}</div>{% endfor %}
+            </div>
+            <button type="submit" class="btn btn-primary">Update Password</button>
+          </form>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}

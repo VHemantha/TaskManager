@@ -1,0 +1,124 @@
+{% extends 'base.html' %}
+{% block extra_head %}
+<style>
+  .table-view-wrap { overflow-x: auto; }
+  .tv-table { min-width: 900px; border-collapse: separate; border-spacing: 0; }
+  .tv-table th { background: var(--tm-bg, #f8fafc); font-size: 0.7rem; font-weight: 700;
+                 text-transform: uppercase; letter-spacing: 0.5px; color: var(--tm-text-muted,#64748b);
+                 padding: 8px 14px; border-bottom: 2px solid var(--tm-border,#e2e8f0);
+                 position: sticky; top: 0; white-space: nowrap; }
+  .tv-table td { padding: 8px 14px; font-size: 0.84rem; vertical-align: middle;
+                 border-bottom: 1px solid var(--tm-border,#e2e8f0); }
+  .tv-table tr:hover td { background: rgba(99,102,241,0.03); }
+  .tv-taskno { font-family: monospace; font-size: 0.72rem; color: var(--tm-text-muted,#64748b); }
+  .tv-title { font-weight: 500; max-width: 320px; }
+  .tv-title a { text-decoration: none; color: inherit; }
+  .tv-title a:hover { color: #6366f1; }
+  .inline-select { border: none; background: transparent; font-size: 0.82rem;
+                   padding: 2px 4px; border-radius: 4px; cursor: pointer; }
+  .inline-select:hover { background: rgba(99,102,241,0.06); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-4">
+
+  {% include 'tasks/_view_switcher.html' %}
+
+  <div class="card border-0">
+    <div class="card-header d-flex align-items-center justify-content-between">
+      <span>
+        <i class="bi bi-table me-2 text-primary"></i>All Tasks
+        <span class="badge ms-1" style="background:rgba(99,102,241,0.1);color:var(--tm-primary);">{{ tasks|length }}</span>
+      </span>
+    </div>
+    <div class="table-view-wrap">
+      <table class="tv-table w-100">
+        <thead>
+          <tr>
+            <th style="width:110px;">Task No</th>
+            <th>Title</th>
+            <th>Status</th>
+            <th>Priority</th>
+            <th>Assignee</th>
+            <th>Due Date</th>
+            <th>Est. Hours</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for task in tasks %}
+          <tr>
+            <td class="tv-taskno">{{ task.task_no }}</td>
+            <td class="tv-title">
+              <a href="{{ url_for('tasks.task_detail', task_id=task.id) }}">{{ task.title | truncate_text(55) }}</a>
+            </td>
+            <td>
+              {% if current_user.role in ('admin','team_leader') %}
+              <select class="inline-select" data-task-id="{{ task.id }}" data-field="status"
+                      onchange="inlineEdit(this)">
+                {% for val, label in STATUS_LABELS.items() %}
+                <option value="{{ val }}" {% if task.status == val %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+              {% else %}
+              <span class="badge bg-{{ task.status_color }}" style="font-size:0.65rem;">{{ task.status_label }}</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if current_user.role in ('admin','team_leader') %}
+              <select class="inline-select" data-task-id="{{ task.id }}" data-field="priority"
+                      onchange="inlineEdit(this)">
+                {% for val, label in PRIORITY_LABELS.items() %}
+                <option value="{{ val }}" {% if task.priority == val %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+              {% else %}
+              <span class="badge bg-{{ task.priority_color }}" style="font-size:0.65rem;">{{ task.priority_label }}</span>
+              {% endif %}
+            </td>
+            <td class="small text-muted">
+              {% if task.primary_assignee %}
+              <span class="d-flex align-items-center gap-2">
+                <span class="avatar-initials avatar-xs bg-primary text-white">{{ task.primary_assignee.get_initials() }}</span>
+                {{ task.primary_assignee.get_display_name() }}
+              </span>
+              {% else %}—{% endif %}
+            </td>
+            <td class="small {% if task.is_overdue %}text-danger{% else %}text-muted{% endif %}">
+              {{ task.due_date | datefmt('%d %b %Y') if task.due_date else '—' }}
+            </td>
+            <td class="small text-muted">{{ task.estimated_hours or '—' }}</td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="7" class="text-center text-muted py-4">No tasks found.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function inlineEdit(el) {
+  const taskId = el.dataset.taskId;
+  const field  = el.dataset.field;
+  const value  = el.value;
+  const csrf   = document.querySelector('meta[name="csrf-token"]').content;
+  fetch(`/tasks/${taskId}/inline-edit`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf },
+    body: JSON.stringify({ field, value }),
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (!data.success) alert('Update failed');
+  })
+  .catch(() => {});
+}
+</script>
+{% endblock %}

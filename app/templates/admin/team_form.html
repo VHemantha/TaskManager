@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container py-4">
+  <div class="row justify-content-center">
+    <div class="col-md-6">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-transparent fw-bold border-bottom">
+          {{ 'Edit Team' if team else 'New Team' }}
+        </div>
+        <div class="card-body">
+          <form method="POST">
+            {{ form.hidden_tag() }}
+            <div class="mb-3">
+              {{ form.name.label(class='form-label') }}
+              {{ form.name(class='form-control') }}
+            </div>
+            <div class="mb-3">
+              {{ form.description.label(class='form-label') }}
+              {{ form.description(class='form-control', rows=3) }}
+            </div>
+            <div class="mb-4">
+              {{ form.leader_id.label(class='form-label') }}
+              {{ form.leader_id(class='form-select') }}
+            </div>
+            <div class="d-flex gap-2">
+              <button type="submit" class="btn btn-primary">Save</button>
+              <a href="{{ url_for('admin.teams') }}" class="btn btn-outline-secondary">Cancel</a>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

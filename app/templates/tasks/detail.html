@@ -1,0 +1,460 @@
+{% extends 'base.html' %}
+{% block extra_head %}
+<script>document.body.dataset.taskId = "{{ task.id }}";</script>
+{% endblock %}
+{% block content %}
+<div class="container-fluid px-4 py-4">
+
+  <!-- Back Link -->
+  <div class="mb-3">
+    <a href="{{ url_for('tasks.list_tasks') }}" class="text-muted text-decoration-none small">
+      <i class="bi bi-arrow-left me-1"></i>Back to Tasks
+    </a>
+  </div>
+
+  <div class="row g-3">
+
+    <!-- Main Content -->
+    <div class="col-lg-8">
+
+      <!-- Task Banner / Header -->
+      <div class="task-banner mb-3">
+        <div class="d-flex justify-content-between align-items-start position-relative" style="z-index:1;">
+          <div class="flex-grow-1">
+            <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+              <span class="badge bg-white bg-opacity-25 text-white fw-mono" style="font-size:0.72rem;">
+                {{ task.task_no }}
+              </span>
+              <span class="badge bg-white bg-opacity-20 text-white">{{ task.status_label }}</span>
+              <span class="badge bg-white bg-opacity-20 text-white">{{ task.priority_label }}</span>
+              {% if task.is_overdue and task.status not in ('completed', 'cancelled') %}
+              <span class="badge bg-danger text-white">
+                <i class="bi bi-exclamation-circle me-1"></i>Overdue
+              </span>
+              {% endif %}
+            </div>
+            <h4 class="fw-bold text-white mb-0" style="font-size:1.2rem;line-height:1.3;">
+              {{ task.title }}
+            </h4>
+          </div>
+          <div class="d-flex gap-2 ms-3 flex-shrink-0">
+            {% if current_user in task.assignees or current_user.role in ('admin','team_leader') %}
+            <button class="btn btn-sm" id="btnStartTimer"
+                    data-task-id="{{ task.id }}"
+                    style="background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.25);"
+                    onclick="if(window.tmTimer) tmTimer.toggle({{ task.id }}, '{{ task.task_no }}')">
+              <i class="bi bi-{% if active_timer and active_timer.task_id == task.id %}stop-fill{% else %}play-fill{% endif %} me-1"></i>
+              <span id="timerBtnLabel">{% if active_timer and active_timer.task_id == task.id %}Stop Timer{% else %}Start Timer{% endif %}</span>
+            </button>
+            {% endif %}
+            {% if current_user.role in ('admin', 'team_leader') %}
+            <a href="{{ url_for('tasks.task_edit', task_id=task.id) }}"
+               class="btn btn-sm"
+               style="background:rgba(255,255,255,0.2);color:#fff;border:1px solid rgba(255,255,255,0.3);">
+              <i class="bi bi-pencil me-1"></i>Edit
+            </a>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Meta row -->
+        <div class="d-flex flex-wrap gap-3 mt-3 pt-3 position-relative" style="z-index:1;border-top:1px solid rgba(255,255,255,0.15);">
+          <div>
+            <div style="color:rgba(255,255,255,0.6);font-size:0.7rem;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Category</div>
+            <div class="text-white small fw-medium">
+              {% if task.category %}
+              <span class="badge" style="background:rgba(255,255,255,0.2);">{{ task.category.name }}</span>
+              {% else %}—{% endif %}
+            </div>
+          </div>
+          <div>
+            <div style="color:rgba(255,255,255,0.6);font-size:0.7rem;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Client</div>
+            <div class="text-white small fw-medium">{{ task.client.name if task.client else '—' }}</div>
+          </div>
+          <div>
+            <div style="color:rgba(255,255,255,0.6);font-size:0.7rem;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Due Date</div>
+            <div class="small fw-medium {% if task.is_overdue and task.status not in ('completed', 'cancelled') %}text-danger{% else %}text-white{% endif %}">
+              {{ task.due_date | datefmt('%d %b %Y, %I:%M %p') if task.due_date else '—' }}
+            </div>
+          </div>
+          <div>
+            <div style="color:rgba(255,255,255,0.6);font-size:0.7rem;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Hours (Est / Actual)</div>
+            <div class="text-white small fw-medium">
+              {{ task.estimated_hours or '—' }}h / {{ task.actual_hours or 0 }}h
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Description -->
+      {% if task.description %}
+      <div class="card border-0 mb-3">
+        <div class="card-body">
+          <h6 class="fw-semibold text-muted mb-2" style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.5px;">
+            Description
+          </h6>
+          <p class="mb-0 text-secondary" style="line-height:1.7;">{{ task.description }}</p>
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Tags -->
+      {% if task.tags_list %}
+      <div class="mb-3">
+        {% for tag in task.tags_list %}
+        <span class="badge me-1 mb-1"
+              style="background:rgba(99,102,241,0.1);color:var(--tm-primary);border:1px solid rgba(99,102,241,0.2);">
+          {{ tag }}
+        </span>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <!-- Status Update -->
+      {% if allowed_transitions %}
+      <div class="card border-0 mb-3">
+        <div class="card-body">
+          <div class="d-flex flex-wrap align-items-center gap-2">
+            <span class="small fw-semibold text-muted me-1">
+              <i class="bi bi-arrow-left-right me-1"></i>Update Status:
+            </span>
+            {% set member_has_time = (current_user.role == 'team_member' and time_logs | selectattr('user_id', 'equalto', current_user.id) | list | length > 0) %}
+            {% for new_status in allowed_transitions %}
+            <form method="POST" action="{{ url_for('tasks.task_status_update', task_id=task.id) }}" class="d-inline">
+              {{ status_form.csrf_token }}
+              <input type="hidden" name="new_status" value="{{ new_status }}">
+              <button type="submit"
+                      class="btn btn-sm {% if new_status == 'completed' %}btn-success{% elif new_status == 'cancelled' %}btn-outline-danger{% else %}btn-outline-primary{% endif %}"
+                      {% if new_status == 'completed' and current_user.role == 'team_member' and not member_has_time %}
+                        title="Log your hours first before completing"
+                      {% endif %}>
+                <i class="bi bi-{% if new_status == 'completed' %}check-lg{% elif new_status == 'in_progress' %}play{% elif new_status == 'on_hold' %}pause{% else %}arrow-right{% endif %} me-1"></i>
+                {{ STATUS_LABELS.get(new_status, new_status) }}
+              </button>
+            </form>
+            {% endfor %}
+          </div>
+          {# Hint for members who haven't logged time yet #}
+          {% if current_user.role == 'team_member' and 'completed' in allowed_transitions and not member_has_time %}
+          <div class="mt-2 d-flex align-items-center gap-2 small text-warning">
+            <i class="bi bi-clock-history"></i>
+            <span>You must <strong>log your hours</strong> in the Time Logs section below before you can complete this task.</span>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Subtasks -->
+      <div class="card border-0 mb-3">
+        <div class="card-header d-flex align-items-center justify-content-between">
+          <span>
+            <i class="bi bi-diagram-2 me-2 text-primary"></i>Subtasks
+            <span class="badge ms-1 subtask-count-badge"
+                  style="background:rgba(99,102,241,0.1);color:var(--tm-primary);">{{ task.subtask_count }}</span>
+            <small class="text-muted ms-2">{{ task.subtask_done_count }}/{{ task.subtask_count }} done</small>
+          </span>
+          {% if current_user.role in ('admin','team_leader') %}
+          <button class="btn btn-xs btn-outline-primary" id="btnAddSubtask">+ Add</button>
+          {% endif %}
+        </div>
+        <div id="subtaskForm" class="px-3 py-2 border-bottom d-none">
+          <div class="d-flex gap-2">
+            <input type="text" id="subtaskTitle" class="form-control form-control-sm" placeholder="Subtask title…">
+            <button class="btn btn-sm btn-primary" id="btnSaveSubtask">Add</button>
+          </div>
+        </div>
+        <div class="card-body p-0" id="subtaskList">
+          {% for sub in task.subtasks.all() %}
+          <a href="{{ url_for('tasks.task_detail', task_id=sub.id) }}"
+             class="d-flex align-items-center gap-3 px-3 py-2 border-bottom text-decoration-none">
+            <span class="badge bg-{{ sub.status_color }}" style="font-size:0.62rem;">{{ sub.status_label }}</span>
+            <span class="small {% if sub.status == 'completed' %}text-decoration-line-through text-muted{% endif %}">
+              {{ sub.title | truncate_text(60) }}
+            </span>
+            <span class="ms-auto x-small text-muted fw-mono">{{ sub.task_no }}</span>
+          </a>
+          {% else %}
+          <div class="px-3 py-3 text-muted small text-center" id="noSubtasks">No subtasks yet.</div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Checklist -->
+      <div class="card border-0 mb-3">
+        <div class="card-header d-flex align-items-center justify-content-between">
+          <span>
+            <i class="bi bi-check2-square me-2 text-primary"></i>Checklist
+            <span class="badge ms-1" id="checklistCount"
+                  style="background:rgba(99,102,241,0.1);color:var(--tm-primary);">
+              {{ task.checklist_done_count }}/{{ task.checklist_total_count }}
+            </span>
+            {% set cl_total = task.checklist_total_count %}
+            {% set cl_done = task.checklist_done_count %}
+            {% if cl_total %}
+            <div class="progress d-inline-flex ms-2" style="width:60px;height:5px;vertical-align:middle;border-radius:3px;">
+              <div class="progress-bar bg-success" id="checklistProgressBar"
+                   style="width:{{ (cl_done/cl_total*100)|int }}%;"
+                   aria-valuenow="{{ (cl_done/cl_total*100)|int }}"></div>
+            </div>
+            {% endif %}
+          </span>
+          <button class="btn btn-xs btn-outline-primary" id="btnAddChecklist">+ Item</button>
+        </div>
+        <div class="card-body pb-2" id="checklistContainer">
+          {% for item in task.checklist_items.all() | sort(attribute='position') %}
+          <div class="checklist-item d-flex align-items-center gap-2 py-1" data-id="{{ item.id }}">
+            <i class="bi bi-grip-vertical text-muted grip-handle" style="cursor:grab;"></i>
+            <input type="checkbox" class="form-check-input checklist-toggle mt-0"
+                   data-id="{{ item.id }}" {% if item.is_done %}checked{% endif %}>
+            <span class="small flex-grow-1 checklist-label {% if item.is_done %}text-decoration-line-through text-muted{% endif %}">
+              {{ item.content }}
+            </span>
+            <button class="btn btn-xs text-muted border-0 checklist-delete" data-id="{{ item.id }}">
+              <i class="bi bi-x"></i>
+            </button>
+          </div>
+          {% else %}
+          <div id="noChecklist" class="text-muted small text-center py-2">No checklist items yet.</div>
+          {% endfor %}
+          <div id="addChecklistForm" class="d-none mt-2">
+            <div class="d-flex gap-2">
+              <input type="text" id="checklistInput" class="form-control form-control-sm" placeholder="Add checklist item…">
+              <button class="btn btn-sm btn-primary" id="btnSaveChecklist">Add</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Dependencies -->
+      <div class="card border-0 mb-3">
+        <div class="card-header">
+          <i class="bi bi-link-45deg me-2 text-primary"></i>Dependencies
+        </div>
+        <div class="card-body p-0">
+          {% for dep in task.dependencies.all() %}
+          <div class="d-flex align-items-center gap-2 px-3 py-2 border-bottom">
+            <span class="badge bg-{{ 'danger' if dep.dep_type == 'blocks' else 'warning' }}" style="font-size:0.65rem;">
+              {{ 'Blocks' if dep.dep_type == 'blocks' else 'Blocked by' }}
+            </span>
+            <a href="{{ url_for('tasks.task_detail', task_id=dep.depends_on_id) }}"
+               class="small text-decoration-none">
+              {{ dep.depends_on.task_no }} — {{ dep.depends_on.title | truncate_text(40) }}
+            </a>
+            {% if current_user.role in ('admin','team_leader') %}
+            <form method="POST"
+                  action="{{ url_for('tasks.delete_dependency', task_id=task.id, dep_id=dep.id) }}"
+                  class="ms-auto">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button class="btn btn-xs btn-outline-danger"><i class="bi bi-x"></i></button>
+            </form>
+            {% endif %}
+          </div>
+          {% else %}
+          <div class="px-3 py-2 text-muted small text-center">No dependencies.</div>
+          {% endfor %}
+          {% if current_user.role in ('admin','team_leader') %}
+          <div class="px-3 py-2 border-top">
+            <form method="POST" action="{{ url_for('tasks.add_dependency', task_id=task.id) }}"
+                  class="d-flex gap-2 align-items-end flex-wrap">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <select name="dep_type" class="form-select form-select-sm" style="width:130px;">
+                <option value="blocked_by">Blocked by</option>
+                <option value="blocks">Blocks</option>
+              </select>
+              <input type="text" name="task_no" class="form-control form-control-sm flex-grow-1"
+                     placeholder="Task No (e.g. TASK-2026-00001)">
+              <button type="submit" class="btn btn-sm btn-outline-secondary">Link</button>
+            </form>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Comments -->
+      <div class="card border-0 mb-3">
+        <div class="card-header">
+          <i class="bi bi-chat-left-text me-2 text-primary"></i>
+          Comments
+          <span class="badge ms-1" style="background:rgba(99,102,241,0.1);color:var(--tm-primary);">
+            {{ task.comments.count() }}
+          </span>
+        </div>
+        <div class="card-body">
+          {% for comment in task.comments.all() %}
+          <div class="d-flex gap-3 mb-3">
+            <span class="avatar-initials avatar-sm bg-primary text-white flex-shrink-0">
+              {{ comment.author.get_initials() if comment.author else '??' }}
+            </span>
+            <div class="flex-grow-1">
+              <div class="d-flex align-items-center gap-2 mb-1">
+                <span class="small fw-semibold">{{ comment.author.get_display_name() if comment.author else 'Unknown' }}</span>
+                <span class="x-small text-muted">{{ comment.created_at | datefmt('%d %b %Y, %H:%M') }}</span>
+              </div>
+              <div class="p-2 px-3 rounded-3 small" style="background:rgba(99,102,241,0.05);border:1px solid var(--tm-border);">
+                {{ comment.message }}
+              </div>
+            </div>
+          </div>
+          {% else %}
+          <p class="text-muted small text-center py-2">No comments yet. Be the first to comment.</p>
+          {% endfor %}
+
+          <!-- Add Comment -->
+          <form method="POST" action="{{ url_for('tasks.task_comment', task_id=task.id) }}" class="mt-3 pt-3 border-top">
+            {{ comment_form.hidden_tag() }}
+            <div class="d-flex gap-2">
+              <span class="avatar-initials avatar-sm bg-primary text-white flex-shrink-0">
+                {{ current_user.get_initials() }}
+              </span>
+              <div class="flex-grow-1">
+                {{ comment_form.message(class='form-control form-control-sm', rows=2,
+                   placeholder='Add a comment...') }}
+                <button type="submit" class="btn btn-sm btn-primary mt-2">
+                  <i class="bi bi-send me-1"></i>Post Comment
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Attachments -->
+      <div class="card border-0">
+        <div class="card-header">
+          <i class="bi bi-paperclip me-2 text-primary"></i>
+          Attachments
+          <span class="badge ms-1" style="background:rgba(99,102,241,0.1);color:var(--tm-primary);">
+            {{ task.attachments.count() }}
+          </span>
+        </div>
+        <div class="card-body">
+          {% if task.attachments.count() > 0 %}
+          <div class="row g-2 mb-3">
+            {% for att in task.attachments.all() %}
+            <div class="col-md-6">
+              <div class="d-flex align-items-center gap-2 p-2 rounded border"
+                   style="background:rgba(0,0,0,0.02);">
+                <i class="bi bi-{% if att.mimetype and 'image' in att.mimetype %}image text-success{% elif att.mimetype and 'pdf' in att.mimetype %}file-pdf text-danger{% else %}file-earmark text-primary{% endif %} fs-5"></i>
+                <div class="flex-grow-1 min-w-0">
+                  <div class="small fw-medium text-truncate">{{ att.filename }}</div>
+                  <div class="x-small text-muted">{{ att.filesize_display }}</div>
+                </div>
+                <a href="{{ url_for('tasks.task_download', task_id=task.id, attachment_id=att.id) }}"
+                   class="btn btn-xs btn-outline-secondary flex-shrink-0">
+                  <i class="bi bi-download"></i>
+                </a>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <p class="text-muted small">No attachments yet.</p>
+          {% endif %}
+
+          <form method="POST" action="{{ url_for('tasks.task_upload', task_id=task.id) }}"
+                enctype="multipart/form-data" class="d-flex gap-2 align-items-center">
+            {{ attachment_form.hidden_tag() }}
+            <input type="file" name="file" class="form-control form-control-sm"
+                   accept=".pdf,.xlsx,.xls,.docx,.doc,.png,.jpg,.jpeg,.zip,.csv,.txt"
+                   style="max-width:300px;">
+            <button type="submit" class="btn btn-sm btn-outline-primary flex-shrink-0">
+              <i class="bi bi-upload me-1"></i>Upload
+            </button>
+          </form>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Sidebar -->
+    <div class="col-lg-4">
+
+      <!-- Assignees -->
+      <div class="card border-0 mb-3">
+        <div class="card-header">
+          <i class="bi bi-people me-2 text-primary"></i>Assignees
+        </div>
+        <div class="card-body p-0">
+          {% for user in task.assignees %}
+          <div class="d-flex align-items-center gap-3 px-3 py-2 border-bottom">
+            <span class="avatar-initials avatar-sm bg-primary text-white">{{ user.get_initials() }}</span>
+            <div>
+              <div class="small fw-medium">{{ user.name }}</div>
+              <div class="x-small text-muted">{{ user.get_role_label() }}</div>
+            </div>
+          </div>
+          {% else %}
+          <div class="px-3 py-3 text-muted small text-center">Unassigned</div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Time Tracking -->
+      <div class="card border-0 mb-3">
+        <div class="card-header">
+          <i class="bi bi-stopwatch me-2 text-primary"></i>Time Logs
+        </div>
+        <div class="card-body">
+          {% if time_logs %}
+          <div class="mb-3">
+            {% for log in time_logs[:5] %}
+            <div class="d-flex justify-content-between align-items-center small py-1 border-bottom">
+              <span class="text-muted">{{ log.user.get_display_name() if log.user else '?' }}</span>
+              <span class="badge"
+                    style="background:rgba(99,102,241,0.1);color:var(--tm-primary);font-size:0.75rem;">
+                {{ '%.1f' % log.calculated_hours }}h
+              </span>
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <p class="text-muted small mb-3">No time logged yet.</p>
+          {% endif %}
+          <form method="POST" action="{{ url_for('tasks.task_timelog', task_id=task.id) }}">
+            {{ timelog_form.hidden_tag() }}
+            <div class="d-flex gap-2">
+              {{ timelog_form.hours(class='form-control form-control-sm', placeholder='Hours, e.g. 1.5') }}
+              <button type="submit" class="btn btn-sm btn-outline-primary flex-shrink-0">Log</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Activity Feed -->
+      <div class="card border-0">
+        <div class="card-header">
+          <i class="bi bi-activity me-2 text-primary"></i>Activity
+        </div>
+        <div class="card-body p-0" style="max-height:360px;overflow-y:auto;">
+          {% for h in (task.status_history.all() | sort(attribute='changed_at', reverse=True))[:20] %}
+          <div class="d-flex gap-2 px-3 py-2 border-bottom">
+            <span class="avatar-initials avatar-xs bg-primary text-white flex-shrink-0 mt-1"
+                  style="width:22px;height:22px;font-size:0.55rem;">
+              {{ h.changed_by_user.get_initials() if h.changed_by_user else '?' }}
+            </span>
+            <div>
+              <span class="small fw-medium">{{ h.changed_by_user.get_display_name() if h.changed_by_user else 'System' }}</span>
+              <span class="small text-muted">
+                {% if h.old_status %}
+                moved from <strong>{{ STATUS_LABELS.get(h.old_status, h.old_status) }}</strong> to
+                {% else %}set status to{% endif %}
+                <strong>{{ STATUS_LABELS.get(h.new_status, h.new_status) }}</strong>
+              </span>
+              <div class="x-small text-muted">{{ h.changed_at | datefmt('%d %b, %H:%M') }}</div>
+            </div>
+          </div>
+          {% else %}
+          <div class="px-3 py-3 text-muted small text-center">No activity yet.</div>
+          {% endfor %}
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/checklist.js') }}"></script>
+{% endblock %}

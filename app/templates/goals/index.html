@@ -1,0 +1,123 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container-fluid px-4 py-4">
+
+  <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+    <div>
+      <h4 class="fw-bold mb-0"><i class="bi bi-trophy me-2 text-warning"></i>Goals</h4>
+      <p class="text-muted small mb-0">Track objectives and link tasks to measure progress</p>
+    </div>
+    {% if current_user.role in ('admin','team_leader') %}
+    <a href="{{ url_for('goals.new_goal') }}" class="btn btn-primary btn-sm">
+      <i class="bi bi-plus-lg me-1"></i>New Goal
+    </a>
+    {% endif %}
+  </div>
+
+  {% if goals %}
+  <div class="row g-3">
+    {% for goal in goals %}
+    <div class="col-md-6 col-xl-4">
+      <div class="card border-0 h-100" style="border-radius:14px;">
+        <div class="card-body p-4">
+          <!-- Status + actions -->
+          <div class="d-flex align-items-start justify-content-between mb-3">
+            <span class="badge bg-{{ goal.status_color }} bg-opacity-15 text-{{ goal.status_color }}"
+                  style="font-size:0.72rem;">
+              {{ goal.status_label }}
+            </span>
+            {% if current_user.role in ('admin','team_leader') %}
+            <div class="dropdown">
+              <button class="btn btn-xs text-muted border-0" data-bs-toggle="dropdown">
+                <i class="bi bi-three-dots"></i>
+              </button>
+              <ul class="dropdown-menu dropdown-menu-end">
+                <li>
+                  <a class="dropdown-item small" href="{{ url_for('goals.detail', goal_id=goal.id) }}">
+                    <i class="bi bi-eye me-2"></i>View
+                  </a>
+                </li>
+                <li>
+                  <a class="dropdown-item small" href="{{ url_for('goals.edit_goal', goal_id=goal.id) }}">
+                    <i class="bi bi-pencil me-2"></i>Edit
+                  </a>
+                </li>
+                <li>
+                  <form method="POST" action="{{ url_for('goals.archive_goal', goal_id=goal.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button class="dropdown-item small text-warning">
+                      <i class="bi bi-archive me-2"></i>Archive
+                    </button>
+                  </form>
+                </li>
+              </ul>
+            </div>
+            {% endif %}
+          </div>
+
+          <!-- Goal ring + title -->
+          <div class="d-flex align-items-center gap-3 mb-3">
+            <!-- SVG Progress Ring -->
+            <div class="flex-shrink-0">
+              {% set r = 28 %}
+              {% set circ = (r * 2 * 3.14159)|round(2) %}
+              {% set offset = (circ * (1 - goal.progress / 100))|round(2) %}
+              <svg width="68" height="68" viewBox="0 0 68 68">
+                <circle cx="34" cy="34" r="{{ r }}" fill="none" stroke="rgba(99,102,241,0.1)" stroke-width="6"/>
+                <circle cx="34" cy="34" r="{{ r }}" fill="none"
+                        stroke="{% if goal.status == 'achieved' %}#10b981{% elif goal.status == 'at_risk' %}#f59e0b{% elif goal.status == 'off_track' %}#ef4444{% else %}#6366f1{% endif %}"
+                        stroke-width="6"
+                        stroke-dasharray="{{ circ }}"
+                        stroke-dashoffset="{{ offset }}"
+                        stroke-linecap="round"
+                        transform="rotate(-90 34 34)"/>
+                <text x="34" y="34" text-anchor="middle" dy="0.35em"
+                      font-size="11" font-weight="700"
+                      fill="{% if goal.status == 'achieved' %}#10b981{% elif goal.status == 'at_risk' %}#f59e0b{% elif goal.status == 'off_track' %}#ef4444{% else %}#6366f1{% endif %}">
+                  {{ goal.progress }}%
+                </text>
+              </svg>
+            </div>
+            <div class="flex-grow-1 min-w-0">
+              <a href="{{ url_for('goals.detail', goal_id=goal.id) }}"
+                 class="fw-semibold text-decoration-none text-truncate d-block"
+                 style="font-size:0.95rem;">{{ goal.name }}</a>
+              {% if goal.team %}
+              <div class="x-small text-muted mt-1">
+                <i class="bi bi-diagram-3 me-1"></i>{{ goal.team.name }}
+              </div>
+              {% endif %}
+            </div>
+          </div>
+
+          <!-- Meta -->
+          <div class="d-flex align-items-center justify-content-between small text-muted">
+            <span>
+              <i class="bi bi-link-45deg me-1"></i>{{ goal.goal_tasks.count() }} tasks
+            </span>
+            {% if goal.target_date %}
+            <span>
+              <i class="bi bi-calendar3 me-1"></i>{{ goal.target_date | datefmt('%d %b %Y') }}
+            </span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="text-center py-5">
+    <i class="bi bi-trophy display-4 text-muted d-block mb-3" style="opacity:0.25;"></i>
+    <h5 class="text-muted fw-medium">No goals yet</h5>
+    <p class="text-muted small">Create your first goal to start tracking team objectives.</p>
+    {% if current_user.role in ('admin','team_leader') %}
+    <a href="{{ url_for('goals.new_goal') }}" class="btn btn-primary btn-sm mt-2">
+      <i class="bi bi-plus-lg me-1"></i>Create First Goal
+    </a>
+    {% endif %}
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

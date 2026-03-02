@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container-fluid py-4">
+  <h4 class="fw-bold mb-4"><i class="bi bi-speedometer2 me-2"></i>Operations Dashboard</h4>
+
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm text-center">
+        <div class="card-body py-3">
+          <div class="fs-2 fw-bold text-primary">{{ total_tasks }}</div>
+          <div class="small text-muted">Total Tasks</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm text-center">
+        <div class="card-body py-3">
+          <div class="fs-2 fw-bold text-info">{{ total_users }}</div>
+          <div class="small text-muted">Active Users</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm text-center">
+        <div class="card-body py-3">
+          <div class="fs-2 fw-bold text-danger">{{ overdue }}</div>
+          <div class="small text-muted">Overdue Tasks</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card border-0 shadow-sm text-center">
+        <div class="card-body py-3">
+          <div class="fs-2 fw-bold text-warning">{{ escalated | length }}</div>
+          <div class="small text-muted">Escalated</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-lg-8">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-transparent fw-semibold border-bottom">
+          <i class="bi bi-diagram-3 me-2"></i>Team Performance
+        </div>
+        <div class="card-body">
+          <canvas id="teamChart" height="200"></canvas>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-4">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-transparent fw-semibold border-bottom text-danger">
+          <i class="bi bi-exclamation-octagon me-2"></i>Escalated Tasks
+        </div>
+        <div class="list-group list-group-flush">
+          {% for task in escalated %}
+          <a href="{{ url_for('tasks.task_detail', task_id=task.id) }}"
+             class="list-group-item list-group-item-action list-group-item-danger px-3 py-2 small">
+            <div class="fw-medium">{{ task.task_no }}</div>
+            <div>{{ task.title | truncate_text(50) }}</div>
+          </a>
+          {% else %}
+          <div class="p-3 text-center text-muted small">No escalated tasks.</div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+const teamData = {{ team_stats | tojson }};
+const ctx = document.getElementById('teamChart');
+if (ctx && teamData.length > 0) {
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: teamData.map(d => d.name),
+      datasets: [{
+        label: 'Active Tasks',
+        data: teamData.map(d => d.active_tasks),
+        backgroundColor: 'rgba(13, 202, 240, 0.7)',
+        borderRadius: 6,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+    }
+  });
+}
+</script>
+{% endblock %}

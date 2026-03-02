@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container-fluid px-4 py-4">
+
+  <div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+      <h4 class="fw-bold mb-0"><i class="bi bi-file-earmark-text me-2 text-primary"></i>Task Templates</h4>
+      <p class="text-muted small mb-0">Reusable task blueprints for common workflows</p>
+    </div>
+  </div>
+
+  {% if templates %}
+  <div class="card border-0">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead>
+            <tr>
+              <th class="ps-4">Template Name</th>
+              <th>Description</th>
+              <th>Created By</th>
+              <th>Checklist Items</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for tpl in templates %}
+            <tr>
+              <td class="ps-4 fw-semibold small">{{ tpl.name }}</td>
+              <td class="small text-muted">{{ tpl.description | truncate_text(60) if tpl.description else '—' }}</td>
+              <td class="small text-muted">{{ tpl.creator.get_display_name() if tpl.creator else '—' }}</td>
+              <td class="small text-muted">{{ tpl.data.get('checklist', [])|length }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  {% else %}
+  <div class="text-center py-5 text-muted">
+    <i class="bi bi-file-earmark-text d-block mb-2" style="font-size:2rem;opacity:0.25;"></i>
+    <p class="small">No templates yet. Save a task as a template from its detail page.</p>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

@@ -1,0 +1,121 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container-fluid py-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="fw-bold mb-0"><i class="bi bi-stopwatch me-2"></i>Time Tracking Report</h4>
+    <a href="{{ url_for('reports.index') }}" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-arrow-left me-1"></i>All Reports
+    </a>
+  </div>
+
+  <!-- Filter -->
+  <div class="card border-0 shadow-sm mb-3">
+    <div class="card-body py-2">
+      <form method="GET" class="row g-2 align-items-end">
+        <div class="col-md-2">
+          <label class="form-label small mb-1">From</label>
+          <input type="date" name="date_from" class="form-control form-control-sm"
+                 value="{{ date_from.strftime('%Y-%m-%d') if date_from else '' }}">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small mb-1">To</label>
+          <input type="date" name="date_to" class="form-control form-control-sm"
+                 value="{{ date_to.strftime('%Y-%m-%d') if date_to else '' }}">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label small mb-1">Member</label>
+          <select name="user_id" class="form-select form-select-sm">
+            <option value="0">All Members</option>
+            {% for m in members %}
+            <option value="{{ m.id }}" {{ 'selected' if m.id == user_id }}>{{ m.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-auto d-flex gap-2">
+          <button type="submit" class="btn btn-warning btn-sm text-dark">Apply</button>
+          <a href="{{ url_for('reports.time_report') }}" class="btn btn-outline-secondary btn-sm">Clear</a>
+          <a href="?{{ request.query_string.decode() }}&export=csv" class="btn btn-success btn-sm">
+            <i class="bi bi-download me-1"></i>CSV
+          </a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Summary -->
+  <div class="row g-3 mb-3">
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm text-center py-3">
+        <div class="display-6 fw-bold text-warning">{{ total_hours }}h</div>
+        <div class="small text-muted">Total Hours Logged</div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-header bg-transparent fw-semibold border-bottom small">By Team Member</div>
+        <ul class="list-group list-group-flush">
+          {% for name, hrs in by_user.items() | sort(attribute='1', reverse=True) %}
+          <li class="list-group-item d-flex justify-content-between px-3 py-2 small">
+            <span>{{ name }}</span><span class="fw-bold">{{ hrs }}h</span>
+          </li>
+          {% else %}
+          <li class="list-group-item text-muted small px-3">No entries</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-header bg-transparent fw-semibold border-bottom small">By Category</div>
+        <ul class="list-group list-group-flush">
+          {% for cat, hrs in by_category.items() | sort(attribute='1', reverse=True) %}
+          <li class="list-group-item d-flex justify-content-between px-3 py-2 small">
+            <span>{{ cat }}</span><span class="fw-bold">{{ hrs }}h</span>
+          </li>
+          {% else %}
+          <li class="list-group-item text-muted small px-3">No entries</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Time Logs Table -->
+  <div class="card border-0 shadow-sm">
+    <div class="card-header bg-transparent fw-semibold border-bottom small">
+      {{ logs | length }} log entries
+    </div>
+    <div class="table-responsive">
+      <table class="table table-hover table-sm mb-0 align-middle">
+        <thead class="table-light">
+          <tr>
+            <th>Date</th><th>Member</th><th>Task</th><th>Category</th>
+            <th>Client</th><th class="text-end">Hours</th><th>Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for log in logs %}
+          <tr>
+            <td class="small">{{ log.created_at | datefmt('%d %b %Y') if log.created_at else '—' }}</td>
+            <td class="small">{{ log.user.get_display_name() if log.user else '—' }}</td>
+            <td class="small">
+              {% if log.task %}
+              <a href="{{ url_for('tasks.task_detail', task_id=log.task_id) }}" class="text-decoration-none">
+                {{ log.task.task_no }}
+              </a> — {{ log.task.title | truncate_text(35) }}
+              {% else %}—{% endif %}
+            </td>
+            <td class="small">{{ log.task.category.name if log.task and log.task.category else '—' }}</td>
+            <td class="small">{{ log.task.client.name if log.task and log.task.client else '—' }}</td>
+            <td class="small text-end fw-bold">{{ '%.1f' % log.calculated_hours }}h</td>
+            <td class="small text-muted">{{ log.description or '' }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="7" class="text-center text-muted py-4">No time logs in this range.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

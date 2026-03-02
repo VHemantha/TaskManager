@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pip --version)",
+      "Bash(python -c \"import flask; print\\(''Flask:'', flask.__version__\\)\")",
+      "Bash(python -c \"import sqlalchemy; print\\(''SQLAlchemy:'', sqlalchemy.__version__\\)\")",
+      "Bash(python -c \"import flask_sqlalchemy; print\\(''Flask-SQLAlchemy:'', flask_sqlalchemy.__version__\\)\")",
+      "Bash(python -c \":*)",
+      "Bash(pip install flask flask-sqlalchemy flask-migrate flask-login flask-bcrypt flask-wtf flask-socketio flask-mail python-dotenv eventlet pillow)",
+      "Bash(flask db migrate -m \"add recurring tasks table\")",
+      "Bash(flask db migrate -m \"subtasks checklists dependencies activity sprints goals templates\")"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\Viraj\\Documents\\TaskManager",
+      "C:\\Users\\Viraj\\Documents\\TaskManager\\app"
+    ]
+  }
+}

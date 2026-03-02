@@ -1,0 +1,137 @@
+{% extends 'base.html' %}
+{% block extra_head %}
+<style>
+  .matrix-quadrant { border-radius: 14px; min-height: 280px; }
+  .matrix-header { font-size: 0.78rem; font-weight: 700; letter-spacing: 0.5px; padding: 12px 16px 8px;
+                   border-radius: 14px 14px 0 0; text-transform: uppercase; }
+  .matrix-q1 .matrix-header { background: rgba(239,68,68,0.08); border-top: 3px solid #ef4444; color: #ef4444; }
+  .matrix-q2 .matrix-header { background: rgba(99,102,241,0.08); border-top: 3px solid #6366f1; color: #6366f1; }
+  .matrix-q3 .matrix-header { background: rgba(245,158,11,0.08); border-top: 3px solid #f59e0b; color: #f59e0b; }
+  .matrix-q4 .matrix-header { background: rgba(148,163,184,0.1); border-top: 3px solid #94a3b8; color: #94a3b8; }
+  .matrix-task-card {
+    display: flex; align-items: flex-start; gap: 8px; padding: 7px 12px;
+    border-bottom: 1px solid var(--tm-border,#e2e8f0); text-decoration: none;
+    color: inherit; transition: background 0.12s;
+  }
+  .matrix-task-card:hover { background: rgba(99,102,241,0.04); }
+  .matrix-task-card:last-child { border-bottom: none; }
+  .matrix-priority-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 5px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-4">
+
+  {% include 'tasks/_view_switcher.html' %}
+
+  <div class="row g-3 mb-3">
+    <div class="col-12">
+      <div class="d-flex align-items-center gap-3 small text-muted">
+        <span class="fw-semibold">Eisenhower Matrix</span>
+        <span>Tasks plotted by urgency (priority) and importance (status)</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Matrix 2×2 -->
+  <div class="row g-3">
+
+    <!-- Q1: Urgent + Important — DO FIRST -->
+    <div class="col-md-6">
+      <div class="card border-0 matrix-quadrant matrix-q1">
+        <div class="matrix-header">
+          <i class="bi bi-exclamation-triangle-fill me-2"></i>Do First
+          <span class="float-end fw-normal" style="font-size:0.7rem;">Urgent &amp; Important</span>
+        </div>
+        <div class="card-body p-0">
+          {% for task in urgent_important %}
+          <a href="{{ url_for('tasks.task_detail', task_id=task.id) }}" class="matrix-task-card">
+            <span class="matrix-priority-dot"
+                  style="background:{{ '#ef4444' if task.priority=='urgent' else '#f59e0b' }};"></span>
+            <div class="min-w-0">
+              <div class="small fw-medium text-truncate">{{ task.title | truncate_text(50) }}</div>
+              <div class="x-small text-muted">{{ task.task_no }} · {{ task.status_label }}</div>
+            </div>
+          </a>
+          {% else %}
+          <div class="text-center text-muted small py-4">No tasks here.</div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Q2: Not Urgent + Important — SCHEDULE -->
+    <div class="col-md-6">
+      <div class="card border-0 matrix-quadrant matrix-q2">
+        <div class="matrix-header">
+          <i class="bi bi-calendar-check me-2"></i>Schedule
+          <span class="float-end fw-normal" style="font-size:0.7rem;">Not Urgent, Important</span>
+        </div>
+        <div class="card-body p-0">
+          {% for task in not_urgent_important %}
+          <a href="{{ url_for('tasks.task_detail', task_id=task.id) }}" class="matrix-task-card">
+            <span class="matrix-priority-dot"
+                  style="background:{{ '#6366f1' if task.priority=='medium' else '#94a3b8' }};"></span>
+            <div class="min-w-0">
+              <div class="small fw-medium text-truncate">{{ task.title | truncate_text(50) }}</div>
+              <div class="x-small text-muted">{{ task.task_no }} · {{ task.status_label }}</div>
+            </div>
+          </a>
+          {% else %}
+          <div class="text-center text-muted small py-4">No tasks here.</div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Q3: Urgent + Not Important — DELEGATE -->
+    <div class="col-md-6">
+      <div class="card border-0 matrix-quadrant matrix-q3">
+        <div class="matrix-header">
+          <i class="bi bi-person-check me-2"></i>Delegate
+          <span class="float-end fw-normal" style="font-size:0.7rem;">Urgent, Not Important</span>
+        </div>
+        <div class="card-body p-0">
+          {% for task in urgent_not_important %}
+          <a href="{{ url_for('tasks.task_detail', task_id=task.id) }}" class="matrix-task-card">
+            <span class="matrix-priority-dot"
+                  style="background:{{ '#ef4444' if task.priority=='urgent' else '#f59e0b' }};"></span>
+            <div class="min-w-0">
+              <div class="small fw-medium text-truncate">{{ task.title | truncate_text(50) }}</div>
+              <div class="x-small text-muted">{{ task.task_no }} · {{ task.status_label }}</div>
+            </div>
+          </a>
+          {% else %}
+          <div class="text-center text-muted small py-4">No tasks here.</div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Q4: Not Urgent + Not Important — ELIMINATE -->
+    <div class="col-md-6">
+      <div class="card border-0 matrix-quadrant matrix-q4">
+        <div class="matrix-header">
+          <i class="bi bi-trash me-2"></i>Eliminate
+          <span class="float-end fw-normal" style="font-size:0.7rem;">Not Urgent, Not Important</span>
+        </div>
+        <div class="card-body p-0">
+          {% for task in eliminate %}
+          <a href="{{ url_for('tasks.task_detail', task_id=task.id) }}" class="matrix-task-card">
+            <span class="matrix-priority-dot" style="background:#94a3b8;"></span>
+            <div class="min-w-0">
+              <div class="small fw-medium text-truncate">{{ task.title | truncate_text(50) }}</div>
+              <div class="x-small text-muted">{{ task.task_no }} · {{ task.status_label }}</div>
+            </div>
+          </a>
+          {% else %}
+          <div class="text-center text-muted small py-4">No tasks here.</div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /row -->
+
+</div>
+{% endblock %}
